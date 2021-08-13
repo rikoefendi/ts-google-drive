@@ -3,7 +3,6 @@
 # Customize
 package-lock.json
 credential.json
-build
 .env
 
 ### JetBrains template
