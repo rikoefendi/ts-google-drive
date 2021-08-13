@@ -6,14 +6,11 @@ import "mocha";
 import { TsGooleDrive } from "../src/TsGooleDrive";
 
 const folderId = process.env.FOLDER_ID || "";
-const keyFilename = process.env.KEY_FILENAME || "";
-const clientEmail = process.env.CLIENT_EMAIL;
-const privateKey = process.env.PRIVATE_KEY;
 const refreshToken = process.env.REFRESH_TOKEN;
 const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
-const credentials = clientEmail && privateKey ? { client_email: clientEmail, private_key: privateKey } : { clientId, clientSecret, refreshToken };
-const tsGoogleDrive = new TsGooleDrive({ keyFilename, ...credentials });
+const credentials = { clientId, clientSecret, refreshToken };
+const tsGoogleDrive = new TsGooleDrive(credentials)
 let testFolderId = "";
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

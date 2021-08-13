@@ -1,4 +1,4 @@
-import { GoogleAuth, JWT, OAuth2Client } from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 import { File } from "./File";
 import { FIELDS, GOOGLE_DRIVE_API, TsGoogleDriveOptions } from "./TsGooleDrive";
 
@@ -24,7 +24,7 @@ export class Query {
   public orderBy: string[] = [];
 
   private nextPageToken?: string;
-  constructor(private client: Promise<OAuth2Client>) {
+  constructor(private client: OAuth2Client) {
   }
 
   public hasNextPage() {

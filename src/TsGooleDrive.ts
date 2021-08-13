@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { GoogleAuth, GoogleAuthOptions, OAuth2Client } from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 import * as path from "path";
 import { File } from "./File";
 import { Query } from "./Query";
@@ -8,7 +8,7 @@ import { ICreateFolderOptions, IUpdateMetaOptions } from "./types";
 const oAuth2ClientSymbol = Symbol("oAuth2Client");
 const SCOPES = "https://www.googleapis.com/auth/drive";
 
-export type TsGoogleDriveOptions = GoogleAuthOptions & {clientId?: string, clientSecret?: string, refreshToken?: string };
+export type TsGoogleDriveOptions = { clientId?: string, clientSecret?: string, refreshToken?: string, scopes?: string | string[] };
 export const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
 export const GOOGLE_DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 export const FIELDS = "id,kind,name,mimeType,parents,modifiedTime,createdTime,size";
@@ -22,8 +22,6 @@ type ISearchFileOptions = {
 };
 
 export class TsGooleDrive {
-  private [oAuth2ClientSymbol]: OAuth2Client;
-
   constructor(private options: TsGoogleDriveOptions) {
     options.scopes = SCOPES;
 
@@ -104,19 +102,10 @@ export class TsGooleDrive {
     return true;
   }
 
-  private async _getClient(): Promise<OAuth2Client> {
-    if (!this[oAuth2ClientSymbol]) {
-      const {clientSecret, clientId, refreshToken} = this.options
-      if (clientId || clientSecret ) {
-        const oAuth2Client = new OAuth2Client(clientId, clientSecret);
-        oAuth2Client.setCredentials({ refresh_token: refreshToken });
-        this[oAuth2ClientSymbol] = oAuth2Client;
-      } else {
-        const googleAuth = new GoogleAuth(this.options);
-        this[oAuth2ClientSymbol] = await googleAuth.getClient() as OAuth2Client;
-      }
-    }
-
-    return this[oAuth2ClientSymbol];
+  private _getClient() {
+    const { clientSecret, clientId, refreshToken } = this.options
+    const oAuth2Client = new OAuth2Client(clientId, clientSecret);
+    oAuth2Client.setCredentials({ refresh_token: refreshToken });
+    return oAuth2Client
   }
 }
