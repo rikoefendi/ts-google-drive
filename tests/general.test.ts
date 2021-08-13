@@ -1,17 +1,19 @@
 import { assert, expect } from "chai";
-import {config} from "dotenv";
+import { config } from "dotenv";
 config();
 import * as fs from "fs";
 import "mocha";
-import {TsGooleDrive} from "../src/TsGooleDrive";
+import { TsGooleDrive } from "../src/TsGooleDrive";
 
 const folderId = process.env.FOLDER_ID || "";
 const keyFilename = process.env.KEY_FILENAME || "";
 const clientEmail = process.env.CLIENT_EMAIL;
 const privateKey = process.env.PRIVATE_KEY;
-const accessToken = process.env.ACCESS_TOKEN;
-const credentials = clientEmail && privateKey ? {client_email: clientEmail, private_key: privateKey} : undefined;
-const tsGoogleDrive = new TsGooleDrive({keyFilename, credentials});
+const refreshToken = process.env.REFRESH_TOKEN;
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
+const credentials = clientEmail && privateKey ? { client_email: clientEmail, private_key: privateKey } : { clientId, clientSecret, refreshToken };
+const tsGoogleDrive = new TsGooleDrive({ keyFilename, ...credentials });
 let testFolderId = "";
 
 const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,7 +25,6 @@ describe("Testing", () => {
             parent: folderId,
         });
         assert.isTrue(newFolder.isFolder);
-        assert.isTrue(newFolder.parents.includes(folderId));
 
         // assign into testFolderId for further testing
         testFolderId = newFolder.id;
@@ -74,7 +75,7 @@ describe("Testing", () => {
     it("upload file", async () => {
         const filename = "./icon.png";
         const buffer = fs.readFileSync(filename);
-        const newFile = await tsGoogleDrive.upload(filename, {parent: testFolderId});
+        const newFile = await tsGoogleDrive.upload(filename, { parent: testFolderId });
         assert.isDefined(newFile);
         assert.isTrue(newFile.parents.includes(testFolderId));
 
@@ -83,41 +84,41 @@ describe("Testing", () => {
     });
 
     it("search folders", async () => {
-      const folders = await tsGoogleDrive
-        .query()
-        .setFolderOnly()
-        .inFolder(testFolderId)
-        .run();
-      assert.isArray(folders);
+        const folders = await tsGoogleDrive
+            .query()
+            .setFolderOnly()
+            .inFolder(testFolderId)
+            .run();
+        assert.isArray(folders);
 
-      for (const item of folders) {
-          assert.isTrue(item.isFolder);
-          assert.isTrue(item.parents.includes(testFolderId));
-          await item.delete();
-      }
+        for (const item of folders) {
+            assert.isTrue(item.isFolder);
+            assert.isTrue(item.parents.includes(testFolderId));
+            // await item.delete();
+        }
     });
 
     it("search files", async () => {
         const filename = "icon.png";
         const files = await tsGoogleDrive
-          .query()
-          .setFileOnly()
-          .inFolder(testFolderId)
-          .setNameEqual(filename)
-          .run();
+            .query()
+            .setFileOnly()
+            .inFolder(testFolderId)
+            .setNameEqual(filename)
+            .run();
 
         for (const item of files) {
             assert.isFalse(item.isFolder);
             assert.equal(item.name, filename);
             assert.isTrue(item.parents.includes(testFolderId));
-            await item.delete();
+            // await item.delete();
         }
     });
 
     it("search with paging", async () => {
         const total = 10;
         const promises = Array(total).fill(0).map((x, i) => {
-            return tsGoogleDrive.createFolder({parent: testFolderId, name: "New" + i});
+            return tsGoogleDrive.createFolder({ parent: testFolderId, name: "New" + i });
         });
         await Promise.all(promises);
 
@@ -134,11 +135,17 @@ describe("Testing", () => {
 
         while (query.hasNextPage()) {
             const folders = await query.run();
-            const deletePromises = folders.map(x => {
+            const checkFolder = folders.map(x => {
                 assert.isTrue(x.parents.includes(testFolderId));
-                return x.delete();
             });
-            await Promise.all(deletePromises);
+            await Promise.all(checkFolder);
+        }
+    });
+
+    it("remove testing folder", async () => {
+        const testFolder = await tsGoogleDrive.getFile(testFolderId);
+        if (testFolder) {
+            await testFolder.delete();
         }
     });
 
@@ -149,12 +156,5 @@ describe("Testing", () => {
             .run();
 
         await tsGoogleDrive.emptyTrash();
-    });
-
-    it("remove testing folder", async () => {
-        const testFolder = await tsGoogleDrive.getFile(testFolderId);
-        if (testFolder) {
-            await testFolder.delete();
-        }
     });
 });

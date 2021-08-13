@@ -1,20 +1,20 @@
-import {GoogleAuth, JWT, OAuth2Client} from "google-auth-library";
-import {File} from "./File";
-import {FIELDS, GOOGLE_DRIVE_API, TsGoogleDriveOptions} from "./TsGooleDrive";
+import { GoogleAuth, JWT, OAuth2Client } from "google-auth-library";
+import { File } from "./File";
+import { FIELDS, GOOGLE_DRIVE_API, TsGoogleDriveOptions } from "./TsGooleDrive";
 
 const oAuth2ClientSymbol = Symbol("oAuth2Client");
 type IOperator = "=" | ">" | ">=" | "<" | "<=";
 type orderByKey = "createdTime" |
-    "folder" |
-    "modifiedByMeTime" |
-    "modifiedTime" |
-    "name" |
-    "name_natural" |
-    "quotaBytesUsed" |
-    "recency" |
-    "sharedWithMeTime" |
-    "starred" |
-    "viewedByMeTime";
+  "folder" |
+  "modifiedByMeTime" |
+  "modifiedTime" |
+  "name" |
+  "name_natural" |
+  "quotaBytesUsed" |
+  "recency" |
+  "sharedWithMeTime" |
+  "starred" |
+  "viewedByMeTime";
 
 // https://developers.google.com/drive/api/v3/reference/files/list
 // https://developers.google.com/drive/api/v3/search-files
@@ -24,9 +24,7 @@ export class Query {
   public orderBy: string[] = [];
 
   private nextPageToken?: string;
-  private [oAuth2ClientSymbol]: OAuth2Client;
-
-  constructor(private options: TsGoogleDriveOptions) {
+  constructor(private client: Promise<OAuth2Client>) {
   }
 
   public hasNextPage() {
@@ -40,7 +38,7 @@ export class Query {
 
   public setOrderBy(value: orderByKey | orderByKey[]) {
     if (Array.isArray(value)) {
-        this.orderBy = this.orderBy.concat(value);
+      this.orderBy = this.orderBy.concat(value);
     } else {
       this.orderBy.push(value);
     }
@@ -110,18 +108,18 @@ export class Query {
       throw new Error("The query has no more next page.");
     }
 
-    const client = await this._getOAuth2Client();
+    const client = await this.client;
     const url = `/files`;
     const params = {
-      q: this.queries.join(" and "), 
-      spaces: "drive", 
-      pageSize: this.pageSize, 
+      q: this.queries.join(" and "),
+      spaces: "drive",
+      pageSize: this.pageSize,
       pageToken: this.nextPageToken,
       fields: `kind,nextPageToken,incompleteSearch,files(${FIELDS})`,
       orderBy: this.orderBy.join(","),
     };
 
-    const res = await client.request({baseURL: GOOGLE_DRIVE_API, url, params});
+    const res = await client.request({ baseURL: GOOGLE_DRIVE_API, url, params });
     const result = res.data as any;
 
     // update next page token, we must at least mark it into empty
@@ -138,20 +136,5 @@ export class Query {
     }
 
     return list;
-  }
-
-  private async _getOAuth2Client(): Promise<OAuth2Client> {
-    if (!this[oAuth2ClientSymbol]) {
-      if (this.options.accessToken) {
-        const oAuth2Client = new OAuth2Client();
-        oAuth2Client.setCredentials({access_token: this.options.accessToken});
-        this[oAuth2ClientSymbol] = oAuth2Client;
-      } else {
-        const googleAuth = new GoogleAuth(this.options);
-        this[oAuth2ClientSymbol] = await googleAuth.getClient() as OAuth2Client;
-      }
-    }
-
-    return this[oAuth2ClientSymbol];
   }
 }
